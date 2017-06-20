@@ -112,7 +112,15 @@ func (h *webhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowAccess(params map[string]string, istioClient *IstioClient) (*ai.Response, error) {
-	message := "setAccess function was called"
+	to := params["to"]
+	from := params["from"]
+
+	err := istioClient.AllowAccess(to, from)
+	if err != nil {
+		return nil, err
+	}
+
+	message := fmt.Sprintf("Access to the %s service is permitted from the %s service.", to, from)
 	return &ai.Response{
 		DisplayText: message,
 		Speech:      message,

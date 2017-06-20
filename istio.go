@@ -41,6 +41,27 @@ func NewIstioClient(username, password, configAPIService, mixerAPIService string
 	}
 }
 
+func (c *IstioClient) AllowAccess(to, from string) error {
+	urlStr := fmt.Sprintf("http://%s/api/v1/scopes/global/subjects/%s.default.svc.cluster.local/rules", c.mixerAPIService, to)
+	request, err := http.NewRequest("DELETE", urlStr, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("AllowAccess error: non-200 status code: %d", resp.StatusCode)
+		return fmt.Errorf("AllowAccess error: non-200 status code: %d", resp.StatusCode)
+	}
+
+	return nil
+
+}
+
 func (c *IstioClient) DenyAccess(to, from string) error {
 	urlStr := fmt.Sprintf("http://%s/api/v1/scopes/global/subjects/%s.default.svc.cluster.local/rules", c.mixerAPIService, to)
 
