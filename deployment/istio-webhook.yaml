@@ -1,0 +1,50 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: istio-webhook
+  name: istio-webhook
+  namespace: kube-system
+spec:
+  template:
+    metadata:
+      labels:
+        app: istio-webhook
+    spec:
+      containers:
+        - name: istio-webhook
+          image: gcr.io/hightowerlabs/istio-webhook:0.0.1
+          env:
+            - name: ISTIO_PILOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: istio-webhook
+                  key: username
+            - name: ISTIO_PILOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: istio-webhook
+                  key: password
+          args:
+            - "-config-api-service=istio-pilot.default.svc.cluster.local:8081"
+            - "-mixer-api-service=istio-mixer.default.svc.cluster.local:9094"
+            - "-username=$(ISTIO_PILOT_USERNAME)"
+            - "-password=$(ISTIO_PILOT_PASSWORD)"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 443
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+            requests:
+              cpu: 500m
+              memory: 128Mi
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /etc/istio-webhook
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: istio-webhook-tls
