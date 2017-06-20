@@ -28,6 +28,7 @@ spec:
           args:
             - "-config-api-service=istio-pilot.default.svc.cluster.local:8081"
             - "-mixer-api-service=istio-mixer.default.svc.cluster.local:9094"
+            - "-service-graph-service=servicegraph.default.svc.cluster.local:8088"
             - "-username=$(ISTIO_PILOT_USERNAME)"
             - "-password=$(ISTIO_PILOT_PASSWORD)"
           imagePullPolicy: Always

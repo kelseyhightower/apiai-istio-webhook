@@ -14,31 +14,35 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/kelseyhightower/api/ai"
 )
 
 var (
-	configAPIService string
-	mixerAPIService  string
-	password         string
-	username         string
+	configAPIService    string
+	mixerAPIService     string
+	serviceGraphService string
+	password            string
+	username            string
 )
 
 func main() {
 	flag.StringVar(&configAPIService, "config-api-service", "istio-pilot:8081", "The Istio config API service.")
 	flag.StringVar(&mixerAPIService, "mixer-api-service", "istio-mixer:9094", "The mixer API service.")
+	flag.StringVar(&serviceGraphService, "service-graph-service", "servicegraph:8088", "The Service Graph service.")
 	flag.StringVar(&password, "password", "", "The Istio config service password")
 	flag.StringVar(&username, "username", "", "The Istio config service username")
 	flag.Parse()
 
-	istioClient := NewIstioClient(username, password, configAPIService, mixerAPIService)
+	istioClient := NewIstioClient(username, password, configAPIService, mixerAPIService, serviceGraphService)
 
 	http.Handle("/", webhookServer(istioClient))
 	log.Printf("Starting the Istio Google Action service...")
@@ -87,7 +91,7 @@ func (h *webhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "denyAccess":
 		aiResponse, err = denyAccess(parameters, h.istioClient)
 	case "getTopology":
-		aiResponse, err = getTopology()
+		aiResponse, err = getTopology(h.istioClient)
 	case "setRoute":
 		aiResponse, err = setRoute(parameters, h.istioClient)
 	case "getRoute":
@@ -144,11 +148,29 @@ func denyAccess(params map[string]string, istioClient *IstioClient) (*ai.Respons
 	}, nil
 }
 
-func getTopology() (*ai.Response, error) {
-	message := "getTopology function was called"
+func getTopology(istioClient *IstioClient) (*ai.Response, error) {
+	t, err := istioClient.GetTopology()
+	if err != nil {
+		return nil, err
+	}
+
+	deps := make(map[string][]string)
+	for _, edge := range t.Edges {
+		deps[edge.Source] = append(deps[edge.Source], edge.Target)
+	}
+
+	message := bytes.NewBufferString("")
+	for k, v := range deps {
+		if k == "unknown" {
+			continue
+		}
+
+		message.WriteString(fmt.Sprintf("The %s services depends on %s. ", k, strings.Join(v, ",")))
+	}
+
 	return &ai.Response{
-		DisplayText: message,
-		Speech:      message,
+		DisplayText: message.String(),
+		Speech:      message.String(),
 		Source:      "Istio Action",
 	}, nil
 }

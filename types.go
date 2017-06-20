@@ -61,3 +61,14 @@ type SimpleRetry struct {
 type SimpleTimeout struct {
 	Timeout string
 }
+
+type Topology struct {
+	Nodes map[string]map[string]string
+	Edges []Edge
+}
+
+type Edge struct {
+	Source string
+	Target string
+	Labels map[string]string
+}

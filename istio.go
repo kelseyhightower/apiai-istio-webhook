@@ -23,21 +23,23 @@ import (
 )
 
 type IstioClient struct {
-	httpClient       *http.Client
-	configAPIService string
-	mixerAPIService  string
-	password         string
-	username         string
+	httpClient          *http.Client
+	configAPIService    string
+	mixerAPIService     string
+	serviceGraphService string
+	password            string
+	username            string
 }
 
-func NewIstioClient(username, password, configAPIService, mixerAPIService string) *IstioClient {
+func NewIstioClient(username, password, configAPIService, mixerAPIService, serviceGraphService string) *IstioClient {
 	httpClient := &http.Client{}
 	return &IstioClient{
-		httpClient:       httpClient,
-		configAPIService: configAPIService,
-		mixerAPIService:  mixerAPIService,
-		password:         password,
-		username:         username,
+		httpClient:          httpClient,
+		configAPIService:    configAPIService,
+		mixerAPIService:     mixerAPIService,
+		serviceGraphService: serviceGraphService,
+		password:            password,
+		username:            username,
 	}
 }
 
@@ -133,4 +135,36 @@ func (c *IstioClient) GetRouteRule(name string) (*RouteRule, error) {
 	}
 
 	return &routeRule, nil
+}
+
+func (c *IstioClient) GetTopology() (*Topology, error) {
+	urlStr := fmt.Sprintf("http://%s/graph", c.serviceGraphService)
+	request, err := http.NewRequest("GET", urlStr, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("GetTopology error: non-200 status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("GetTopology error: non-200 status code: %d", resp.StatusCode)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var t Topology
+	err = json.Unmarshal(data, &t)
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
 }
