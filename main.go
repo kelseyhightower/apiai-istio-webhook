@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/kelseyhightower/api/ai"
 )
@@ -154,9 +153,9 @@ func getTopology(istioClient *IstioClient) (*ai.Response, error) {
 		return nil, err
 	}
 
-	deps := make(map[string][]string)
+	deps := make(map[string][]Edge)
 	for _, edge := range t.Edges {
-		deps[edge.Source] = append(deps[edge.Source], edge.Target)
+		deps[edge.Source] = append(deps[edge.Source], edge)
 	}
 
 	message := bytes.NewBufferString("")
@@ -164,8 +163,13 @@ func getTopology(istioClient *IstioClient) (*ai.Response, error) {
 		if k == "unknown" {
 			continue
 		}
-
-		message.WriteString(fmt.Sprintf("The %s services depends on %s. ", k, strings.Join(v, ",")))
+		message.WriteString(fmt.Sprintf("The %s service depends on ", k))
+		for i, dep := range v {
+			message.WriteString(fmt.Sprintf("service %s version %s ", dep.Target, dep.Labels["version"]))
+			if i+1 != len(v) {
+				message.WriteString("and ")
+			}
+		}
 	}
 
 	return &ai.Response{
